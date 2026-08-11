@@ -6,23 +6,84 @@
 #include <iostream>
 
 int main(int argc, char *argv[]) {
-  /* Initialize the Run Copy of Disk */
+  /* Initialize the Run Copy of Disk */ 
   Disk disk_run;
-  // StaticBuffer buffer;
-  unsigned char buffer[BLOCK_SIZE];
-  // OpenRelTable cache;
-  Disk::readBlock(buffer,7000);
-  
-  char message[] = "Hello";
 
-  memcpy(buffer+20,message,6);
+  RecBuffer relcatbuffer(RELCAT_BLOCK);
+  RecBuffer attcatbuffer(ATTRCAT_BLOCK);
 
-  Disk::writeBlock(buffer,7000);
+  HeadInfo relcatHead;
+  HeadInfo attcatHead;
 
-  unsigned char buffer2[BLOCK_SIZE];
-  Disk::readBlock(buffer2,7000);
-  char message2[6];
-  memcpy(message2,buffer2+20,6);
-  std::cout << message2 << std::endl;
+  relcatbuffer.getHeader(&relcatHead);
+  attcatbuffer.getHeader(&attcatHead);
+
+  for(int i = 0;i < relcatHead.numEntries;i++){
+    Attribute relcatRecord[RELCAT_NO_ATTRS];
+    relcatbuffer.getRecord(relcatRecord,i);
+
+    printf("Relation : %s\n",relcatRecord[RELCAT_REL_NAME_INDEX].sVal,relcatRecord[RELCAT_REL_NAME_INDEX].sVal);
+ 
+    RecBuffer tempBuffer = attcatbuffer;
+    int currentBlock = ATTRCAT_BLOCK;
+
+    while(currentBlock != -1){
+      tempBuffer = RecBuffer(currentBlock);  
+
+      HeadInfo temp;
+      tempBuffer.getHeader(&temp);
+
+      for(int j = 0;j < temp.numEntries;j++){
+
+        Attribute attcatRecord[ATTRCAT_NO_ATTRS];
+        tempBuffer.getRecord(attcatRecord,j);
+
+        if(strcmp(relcatRecord[RELCAT_REL_NAME_INDEX].sVal,attcatRecord[ATTRCAT_REL_NAME_INDEX].sVal) == 0){
+
+          const char* atttype = (attcatRecord[ATTRCAT_ATTR_TYPE_INDEX].nVal == 0.0) ? "NUM" : "STR";
+
+          printf(" %s : %s\n",attcatRecord[ATTRCAT_ATTR_NAME_INDEX].sVal,atttype);
+
+        }
+
+      }
+
+      currentBlock = temp.rblock;
+    }
+
+    printf("\n");
+  }
+
+  /*int currentBlock = ATTRCAT_BLOCK;
+  RecBuffer tempBuffer = attcatbuffer;
+
+  while(currentBlock != -1){
+
+    tempBuffer = RecBuffer(currentBlock);
+    HeadInfo temp;
+    tempBuffer.getHeader(&temp);
+
+    for(int j = 0;j < temp.numEntries;j++){
+
+      Attribute attcatRecord[ATTRCAT_NO_ATTRS];
+      tempBuffer.getRecord(attcatRecord,j);
+
+      if(strcmp(attcatRecord[ATTRCAT_REL_NAME_INDEX].sVal,"Students") == 0){
+
+        if(strcmp(attcatRecord[ATTRCAT_ATTR_NAME_INDEX].sVal,"Class") == 0){
+
+          strcpy(attcatRecord[ATTRCAT_ATTR_NAME_INDEX].sVal,"Batch");
+          tempBuffer.setRecord(attcatRecord,j);
+
+          return 0;
+        }
+
+      }
+
+    }
+    currentBlock = temp.rblock;
+
+  }*/
+
   //return FrontendInterface::handleFrontend(argc, argv);
 }
