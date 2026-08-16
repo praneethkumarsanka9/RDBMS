@@ -8,6 +8,8 @@
 int main(int argc, char *argv[]) {
   /* Initialize the Run Copy of Disk */ 
   Disk disk_run;
+  StaticBuffer buffer;
+  OpenRelTable Cache;
 
   RecBuffer relcatbuffer(RELCAT_BLOCK);
   RecBuffer attcatbuffer(ATTRCAT_BLOCK);
@@ -54,36 +56,36 @@ int main(int argc, char *argv[]) {
     printf("\n");
   }
 
-  /*int currentBlock = ATTRCAT_BLOCK;
-  RecBuffer tempBuffer = attcatbuffer;
+  /*for(int i = 0;i <= 2;i++){
+    RelCatEntry relCatEntry;
 
-  while(currentBlock != -1){
+    int ret = RelCacheTable::getRelCatEntry(i,&relCatEntry);
 
-    tempBuffer = RecBuffer(currentBlock);
-    HeadInfo temp;
-    tempBuffer.getHeader(&temp);
+    if(ret != SUCCESS){
+      printf("error getting relation catalog entry\n");
+      return ret;
+    }
 
-    for(int j = 0;j < temp.numEntries;j++){
+    printf("Relation : %s\n",relCatEntry.relName);
 
-      Attribute attcatRecord[ATTRCAT_NO_ATTRS];
-      tempBuffer.getRecord(attcatRecord,j);
+    for(int j = 0;j < relCatEntry.numAttrs;j++){
+      AttrCatEntry attrCatEntry;
 
-      if(strcmp(attcatRecord[ATTRCAT_REL_NAME_INDEX].sVal,"Students") == 0){
+      ret = AttrCacheTable::getAttrCatEntry(i,j,&attrCatEntry);
 
-        if(strcmp(attcatRecord[ATTRCAT_ATTR_NAME_INDEX].sVal,"Class") == 0){
-
-          strcpy(attcatRecord[ATTRCAT_ATTR_NAME_INDEX].sVal,"Batch");
-          tempBuffer.setRecord(attcatRecord,j);
-
-          return 0;
-        }
-
+      if(ret != SUCCESS){
+        printf("Error getting Attribute Catalog entry\n");
+        return ret;
       }
 
+      const char *attrType = (attrCatEntry.attrType == 0.0) ? "NUM" : "STR";
+
+      printf(" %s: %s\n",attrCatEntry.attrName,attrType);
     }
-    currentBlock = temp.rblock;
+
+    printf("\n");
 
   }*/
 
-  //return FrontendInterface::handleFrontend(argc, argv);
+  return 0;
 }

@@ -9,16 +9,38 @@ BlockBuffer::BlockBuffer(int blockNum){
 
 RecBuffer::RecBuffer(int blockNum):BlockBuffer::BlockBuffer(blockNum){}
 
+int BlockBuffer::loadBlockAndGetBufferPtr(unsigned char **bufferptr){
+
+    int bufferNum = StaticBuffer::getBufferNum(this->blockNum);
+
+    if(bufferNum == E_BLOCKNOTINBUFFER){
+        bufferNum = StaticBuffer::getFreeBuffer(this->blockNum);
+        
+        if(bufferNum == E_OUTOFBOUND){
+            return E_OUTOFBOUND;
+        } 
+
+        Disk::readBlock(StaticBuffer::blocks[bufferNum],this->blockNum);
+    }
+
+    *bufferptr = StaticBuffer::blocks[bufferNum];
+    
+    return SUCCESS;
+}
+
 int BlockBuffer::getHeader(struct HeadInfo *head){
-    unsigned char buffer[BLOCK_SIZE];
+    
+    unsigned char *bufferptr;
+    int ret = loadBlockAndGetBufferPtr(&bufferptr);
+    if(ret != SUCCESS){
+        return ret;
+    }
 
-    Disk::readBlock(buffer,this->blockNum);
-
-    memcpy(&head->numSlots,buffer+24,4);
-    memcpy(&head->numEntries,buffer+16,4);
-    memcpy(&head->numAttrs,buffer+20,4);
-    memcpy(&head->rblock,buffer+12,4); 
-    memcpy(&head->lblock,buffer+8,4);
+    memcpy(&head->numSlots,bufferptr+24,4);
+    memcpy(&head->numEntries,bufferptr+16,4);
+    memcpy(&head->numAttrs,bufferptr+20,4);
+    memcpy(&head->rblock,bufferptr+12,4); 
+    memcpy(&head->lblock,bufferptr+8,4);
 
     return SUCCESS;
 }
@@ -29,32 +51,38 @@ int RecBuffer::getRecord(union Attribute *rec,int slotNum){
     int attrCount = head.numAttrs;
     int slotCount = head.numSlots; 
 
-    unsigned char buffer[BLOCK_SIZE];
+    unsigned char *bufferptr;
+    int ret = loadBlockAndGetBufferPtr(&bufferptr);
 
-    Disk::readBlock(buffer,this->blockNum);
+    if(ret != SUCCESS){
+        return ret;
+    }
 
     int offset = 32 + head.numSlots + ((ATTR_SIZE * attrCount) * slotNum);
     
-    memcpy(rec,buffer+offset,ATTR_SIZE * attrCount);
+    memcpy(rec,bufferptr+offset,ATTR_SIZE * attrCount);
 
     return SUCCESS;
 }
 
-int RecBuffer::setRecord(union Attribute *rec,int slotNum){
+/*int RecBuffer::setRecord(union Attribute *rec,int slotNum){
     struct HeadInfo head;
     this->getHeader(&head);
     int attrCount = head.numAttrs;
     int slotCount = head.numSlots;
 
-    unsigned char buffer[BLOCK_SIZE];
+    unsigned char *bufferptr;
+    int ret = loadBlockAndGetBufferPtr(&bufferptr);
 
-    Disk::readBlock(buffer,this->blockNum);
+    if(ret != SUCCESS){
+        return ret;
+    }
 
     int offset = 32 + slotCount + ((ATTR_SIZE * attrCount) * slotNum);
 
-    memcpy(buffer + offset,rec,ATTR_SIZE * attrCount);
+    memcpy(bufferptr + offset,rec,ATTR_SIZE * attrCount);
 
-    Disk::writeBlock(buffer,this->blockNum);
+    Disk::writeBlock(bufferptr,this->blockNum);
 
     return SUCCESS;
-}
+}*/
