@@ -15,7 +15,7 @@ void AttrCacheTable::recordToAttrCatEntry(union Attribute record[ATTRCAT_NO_ATTR
 
 }
 
-int AttrCacheTable::getAttrCatEntry(int relId, int attrOffset, AttrCatEntry* attrCacheBuf){
+int AttrCacheTable::getAttrCatEntry(int relId, char attrName[ATTR_SIZE], AttrCatEntry* attrCacheBuf){
 
     if(relId < 0 || relId >= MAX_OPEN){
         return E_OUTOFBOUND;
@@ -27,7 +27,31 @@ int AttrCacheTable::getAttrCatEntry(int relId, int attrOffset, AttrCatEntry* att
 
     for(AttrCacheEntry* i = attrCache[relId];i != nullptr;i = i->next){
 
-        if(i->attrCatEntry.offset == attrOffset){
+        if(strcmp(i->attrCatEntry.attrName,attrName) == 0){
+
+            *attrCacheBuf = i->attrCatEntry;
+            return SUCCESS;
+
+        }
+    }
+
+    return E_ATTRNOTEXIST;
+
+}
+
+int AttrCacheTable::getAttrCatEntry(int relId, int offset , AttrCatEntry* attrCacheBuf){
+
+    if(relId < 0 || relId >= MAX_OPEN){
+        return E_OUTOFBOUND;
+    }
+
+    if(attrCache[relId] == nullptr){
+        return E_RELNOTOPEN;
+    }
+
+    for(AttrCacheEntry* i = attrCache[relId];i != nullptr;i = i->next){
+
+        if(i->attrCatEntry.offset == offset){
 
             *attrCacheBuf = i->attrCatEntry;
             return SUCCESS;

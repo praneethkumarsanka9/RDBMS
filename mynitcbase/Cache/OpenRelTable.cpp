@@ -2,6 +2,8 @@
 #include <cstdlib>
 #include <cstring>
 
+OpenRelTableMetaInfo OpenRelTable::tableMetaInfo[MAX_OPEN];
+
 OpenRelTable::OpenRelTable(){
     for(int i = 0;i < MAX_OPEN;i++){
         RelCacheTable::relCache[i] = nullptr;
@@ -125,6 +127,15 @@ OpenRelTable::OpenRelTable(){
     }
 
     AttrCacheTable::attrCache[STUDENT] = head;
+
+    OpenRelTable::tableMetaInfo[RELCAT_RELID].free = false;
+    strcpy(OpenRelTable::tableMetaInfo[RELCAT_RELID].relName,RELCAT_RELNAME);
+
+    OpenRelTable::tableMetaInfo[ATTRCAT_RELID].free = false;
+    strcpy(OpenRelTable::tableMetaInfo[ATTRCAT_RELID].relName,ATTRCAT_RELNAME);
+
+    OpenRelTable::tableMetaInfo[STUDENT].free = false;
+    strcpy(OpenRelTable::tableMetaInfo[STUDENT].relName,"Students");
 }
 
 OpenRelTable::~OpenRelTable(){
@@ -145,3 +156,17 @@ OpenRelTable::~OpenRelTable(){
     }
 }
 
+int OpenRelTable::getRelId(char relName[ATTR_SIZE]) {
+
+    for(int i = 0; i < MAX_OPEN; i++) {
+
+        if(RelCacheTable::relCache[i] == nullptr)
+            continue;
+
+        if(tableMetaInfo[i].free == false && strcmp(RelCacheTable::relCache[i]->relCatEntry.relName,relName) == 0) {
+            return i;
+        }
+    }
+
+    return E_RELNOTOPEN;
+}

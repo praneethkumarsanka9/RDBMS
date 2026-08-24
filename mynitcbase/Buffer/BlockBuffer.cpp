@@ -65,6 +65,44 @@ int RecBuffer::getRecord(union Attribute *rec,int slotNum){
     return SUCCESS;
 }
 
+
+int RecBuffer::getSlotMap(unsigned char *slotMap){
+    unsigned char *bufferPtr;
+
+    int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+    if(ret != SUCCESS){
+        return ret;
+    }
+    struct HeadInfo head;
+    ret = getHeader(&head);
+    if(ret != SUCCESS){
+        return ret;
+    }
+
+    int slotCounts = head.numSlots;
+
+    unsigned char *slotMapInBuffer = bufferPtr + HEADER_SIZE;
+
+    memcpy(slotMap,slotMapInBuffer,slotCounts);
+    
+    return SUCCESS;
+}
+
+int compareAttrs(Attribute attr1, Attribute attr2, int attrType) {
+
+    if(attrType == NUMBER){
+
+        if(attr1.nVal < attr2.nVal)
+            return -1;
+
+        if(attr1.nVal > attr2.nVal)
+            return 1;
+
+        return 0;
+    }
+
+    return strcmp(attr1.sVal, attr2.sVal);
+}
 /*int RecBuffer::setRecord(union Attribute *rec,int slotNum){
     struct HeadInfo head;
     this->getHeader(&head);
