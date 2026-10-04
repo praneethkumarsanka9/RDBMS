@@ -228,6 +228,7 @@ OpenRelTable::~OpenRelTable(){
 } 
 
 int OpenRelTable::closeRel(int relId){
+
     if(relId == RELCAT_RELID || relId == ATTRCAT_RELID){
         return E_NOTPERMITTED;
     }
@@ -238,6 +239,26 @@ int OpenRelTable::closeRel(int relId){
 
     if(tableMetaInfo[relId].free){
         return E_RELNOTOPEN;
+    }
+
+    if(RelCacheTable::relCache[relId]->dirty){
+
+        union Attribute record[RELCAT_NO_ATTRS];
+
+        RelCacheTable::relCatEntryToRecord(
+            &RelCacheTable::relCache[relId]->relCatEntry,
+            record
+        );
+
+        RecId recId = RelCacheTable::relCache[relId]->recId;
+
+        RecBuffer relCatBlock(recId.block);
+
+        int ret = relCatBlock.setRecord(record, recId.slot);
+
+        if(ret != SUCCESS){
+            return ret;
+        }
     }
 
     free(RelCacheTable::relCache[relId]);

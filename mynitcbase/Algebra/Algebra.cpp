@@ -102,3 +102,64 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
 
   return SUCCESS;
 }
+
+int Algebra::insert(char relName[ATTR_SIZE], int numberOfAttributes,
+                    char record[][ATTR_SIZE]) {
+
+    if(strcmp(relName, RELCAT_RELNAME) == 0 ||
+       strcmp(relName, ATTRCAT_RELNAME) == 0) {
+        return E_NOTPERMITTED;
+    }
+
+    int relId = OpenRelTable::getRelId(relName);
+
+    if(relId == E_RELNOTOPEN) {
+        return E_RELNOTOPEN;
+    }
+
+    RelCatEntry relCatEntry;
+
+    int ret = RelCacheTable::getRelCatEntry(relId, &relCatEntry);
+
+    if(ret != SUCCESS) {
+        return ret;
+    }
+
+    if(relCatEntry.numAttrs != numberOfAttributes) {
+        return E_NATTRMISMATCH;
+    }
+
+    Attribute recordValues[numberOfAttributes];
+
+    for(int i = 0; i < numberOfAttributes; i++) {
+
+        AttrCatEntry attrCatEntry;
+
+        ret = AttrCacheTable::getAttrCatEntry(
+            relId,
+            i,
+            &attrCatEntry
+        );
+
+        if(ret != SUCCESS) {
+            return ret;
+        }
+
+        if(attrCatEntry.attrType == NUMBER) {
+
+            if(!isNumber(record[i])) {
+                return E_ATTRTYPEMISMATCH;
+            }
+
+            recordValues[i].nVal = atof(record[i]);
+        }
+        else if(attrCatEntry.attrType == STRING) {
+
+            strcpy(recordValues[i].sVal, record[i]);
+        }
+    }
+
+    ret =  BlockAccess::insert(relId, recordValues);
+
+    return ret;
+}

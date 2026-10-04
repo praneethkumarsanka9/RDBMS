@@ -187,3 +187,207 @@ int BlockAccess::renameAttribute(char relName[ATTR_SIZE],char oldName[ATTR_SIZE]
 
     return SUCCESS; 
 }
+
+int BlockAccess::insert(int relId, Attribute *record) {
+
+    RelCatEntry relCatEntry;
+
+    int ret = RelCacheTable::getRelCatEntry(relId, &relCatEntry);
+
+    if(ret != SUCCESS){
+        return ret;
+    }
+
+    int blockNum = relCatEntry.firstBlk;
+
+    RecId rec_id = {-1, -1};
+
+    int numOfSlots = relCatEntry.numSlotsPerBlk;
+    int numOfAttributes = relCatEntry.numAttrs;
+
+    int prevBlockNum = -1;
+
+    while(blockNum != -1){
+
+        RecBuffer block(blockNum);
+
+        HeadInfo head;
+
+        ret = block.getHeader(&head);
+
+        if(ret != SUCCESS){
+            return ret;
+        }
+
+        unsigned char slotMap[numOfSlots];
+
+        ret = block.getSlotMap(slotMap);
+
+        if(ret != SUCCESS){
+            return ret;
+        }
+
+        int freeSlot = -1;
+
+        for(int i = 0; i < numOfSlots; i++){
+
+            if(slotMap[i] == SLOT_UNOCCUPIED){
+                freeSlot = i;
+                break;
+            }
+        }
+
+        if(freeSlot != -1){
+
+            rec_id.block = blockNum;
+            rec_id.slot = freeSlot;
+
+            break;
+        }
+
+        prevBlockNum = blockNum;
+        blockNum = head.rblock;
+    }
+
+    if(rec_id.block == -1){
+
+        if(relId == RELCAT_RELID){
+            return E_MAXRELATIONS;
+        }
+
+        RecBuffer newBlock;
+
+        int newBlockNum = newBlock.getBlockNum();
+
+        if(newBlockNum == E_DISKFULL){
+            return E_DISKFULL;
+        }
+
+        rec_id.block = newBlockNum;
+        rec_id.slot = 0;
+
+        HeadInfo head;
+
+        head.blockType = REC;
+        head.pblock = -1;
+
+        if(prevBlockNum == -1){
+            head.lblock = -1;
+        }
+        else{
+            head.lblock = prevBlockNum;
+        }
+
+        head.rblock = -1;
+        head.numEntries = 0;
+        head.numSlots = numOfSlots;
+        head.numAttrs = numOfAttributes;
+
+        ret = newBlock.setHeader(&head);
+
+        if(ret != SUCCESS){
+            return ret;
+        }
+
+        unsigned char slotMap[numOfSlots];
+
+        for(int i = 0; i < numOfSlots; i++){
+            slotMap[i] = SLOT_UNOCCUPIED;
+        }
+
+        ret = newBlock.setSlotMap(slotMap);
+
+        if(ret != SUCCESS){
+            return ret;
+        }
+
+        if(prevBlockNum != -1){
+
+            RecBuffer prevBlock(prevBlockNum);
+
+            HeadInfo prevHead;
+
+            ret = prevBlock.getHeader(&prevHead);
+
+            if(ret != SUCCESS){
+                return ret;
+            }
+
+            prevHead.rblock = rec_id.block;
+
+            ret = prevBlock.setHeader(&prevHead);
+
+            if(ret != SUCCESS){
+                return ret;
+            }
+        }
+        else{
+
+            relCatEntry.firstBlk = rec_id.block;
+
+            ret = RelCacheTable::setRelCatEntry(relId, &relCatEntry);
+
+            if(ret != SUCCESS){
+                return ret;
+            }
+        }
+
+        relCatEntry.lastBlk = rec_id.block;
+
+        ret = RelCacheTable::setRelCatEntry(relId, &relCatEntry);
+
+        if(ret != SUCCESS){
+            return ret;
+        }
+    }
+
+    RecBuffer block(rec_id.block);
+
+    ret = block.setRecord(record, rec_id.slot);
+
+    if(ret != SUCCESS){
+        return ret;
+    }
+
+    unsigned char slotMap[numOfSlots];
+
+    ret = block.getSlotMap(slotMap);
+
+    if(ret != SUCCESS){
+        return ret;
+    }
+
+    slotMap[rec_id.slot] = SLOT_OCCUPIED;
+
+    ret = block.setSlotMap(slotMap);
+
+    if(ret != SUCCESS){
+        return ret;
+    }
+
+    HeadInfo head;
+
+    ret = block.getHeader(&head);
+
+    if(ret != SUCCESS){
+        return ret;
+    }
+
+    head.numEntries++;
+
+    ret = block.setHeader(&head);
+
+    if(ret != SUCCESS){
+        return ret;
+    }
+
+    relCatEntry.numRecs++;
+
+    ret = RelCacheTable::setRelCatEntry(relId, &relCatEntry);
+
+    if(ret != SUCCESS){
+        return ret;
+    }
+
+    return SUCCESS;
+}
